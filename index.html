@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIDIF 피드백 트래커</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F7F6F4; --surface: #FFFFFF; --border: #E8E5E0; --navy: #1C2B3A;
+  --sage: #7A9E8E; --sage-light: #EAF2EE; --amber: #C8873A; --amber-light: #FDF2E7;
+  --purple: #7C3AED; --purple-light: #F3F0FF;
+  --text-primary: #1C2B3A; --text-secondary: #6B7280; --text-muted: #9CA3AF;
+  --radius: 10px; --shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; background: var(--bg); color: var(--text-primary); font-size: 13px; min-height: 100vh; }
+
+/* HEADER */
+.header { background: var(--navy); padding: 0 24px; display: flex; align-items: stretch; justify-content: space-between; min-height: 52px; }
+.header-left { display: flex; align-items: center; gap: 10px; }
+.brand-dot { width: 7px; height: 7px; background: var(--sage); border-radius: 50%; }
+.brand-name { color: #fff; font-size: 14px; font-weight: 600; letter-spacing: 0.07em; }
+.brand-sub { color: rgba(255,255,255,0.4); font-size: 11px; margin-left: 6px; }
+.header-right { display: flex; align-items: center; gap: 8px; }
+.header-btn { background: var(--sage); color: white; border: none; padding: 9px 18px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 5px; box-shadow: 0 1px 4px rgba(0,0,0,0.18); transition: background 0.15s; }
+.header-btn:hover { background: #6A8E7E; }
+
+.main { padding: 20px 24px; max-width: 1100px; margin: 0 auto; }
+
+/* LOADING */
+.loading-bar { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--sage); z-index: 999; animation: loading 1s ease-in-out infinite; display: none; }
+.loading-bar.show { display: block; }
+@keyframes loading { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+/* STATS */
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 14px; }
+.stat-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.stat-icon.contents { background: var(--sage-light); } .stat-icon.design { background: var(--amber-light); } .stat-icon.material { background: var(--purple-light); }
+.stat-label { font-size: 11px; color: var(--text-muted); font-weight: 500; margin-bottom: 5px; }
+.stat-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+.stat-pill { font-size: 10px; padding: 2px 7px; border-radius: 3px; font-weight: 500; }
+.pill-progress { background: var(--amber-light); color: var(--amber); } .pill-done { background: var(--sage-light); color: #4A7A68; } .pill-pending { background: #F3F4F6; color: var(--text-muted); }
+
+/* FILTER */
+.filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.filter-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+.filter-btn { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-size: 11px; font-weight: 500; color: var(--text-secondary); cursor: pointer; font-family: inherit; transition: all 0.15s; }
+.filter-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.section-title { font-size: 13px; font-weight: 600; color: var(--navy); }
+.section-count { font-size: 11px; color: var(--text-muted); }
+
+/* PRODUCT CARD */
+.product-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; box-shadow: var(--shadow); overflow: hidden; }
+.product-card-header { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+.product-card-header:hover { background: #FAFAF9; }
+.product-left { display: flex; align-items: center; gap: 10px; }
+.cat-badge { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 4px; flex-shrink: 0; }
+.cat-skincare { background: var(--sage-light); color: #4A7A68; } .cat-lifestyle { background: #EEF2FF; color: #4338CA; } .cat-makeup { background: #FDF2F8; color: #9D174D; } .cat-haircare { background: #FFFBEB; color: #92400E; }
+.product-name { font-size: 14px; font-weight: 600; color: var(--navy); }
+.product-goal { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.product-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.track-summary { display: flex; gap: 6px; }
+.track-mini { font-size: 10px; padding: 2px 8px; border-radius: 3px; font-weight: 500; }
+.track-mini.contents { background: var(--sage-light); color: #4A7A68; } .track-mini.design { background: var(--amber-light); color: var(--amber); } .track-mini.material { background: var(--purple-light); color: var(--purple); } .track-mini.pending { background: #F3F4F6; color: var(--text-muted); }
+.expand-icon { font-size: 11px; color: var(--text-muted); transition: transform 0.2s; display: inline-block; }
+.expand-icon.open { transform: rotate(180deg); }
+
+/* DETAIL */
+.product-detail { border-top: 1px solid var(--border); display: none; background: #FAFAF9; }
+.product-detail.open { display: block; }
+.info-row { padding: 12px 16px; display: flex; gap: 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.info-item-label { font-size: 10px; color: var(--text-muted); font-weight: 500; letter-spacing: 0.03em; margin-bottom: 2px; }
+.info-item-value { font-size: 12px; color: var(--navy); }
+.tracks-container { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+.track { padding: 14px 16px; border-right: 1px solid var(--border); }
+.track:last-child { border-right: none; }
+.track-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.track-title-row { display: flex; align-items: center; gap: 8px; }
+.track-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.track-dot.contents { background: var(--sage); } .track-dot.design { background: var(--amber); } .track-dot.material { background: var(--purple); }
+.track-name { font-size: 12px; font-weight: 600; color: var(--navy); }
+.track-status { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 3px; cursor: pointer; border: none; font-family: inherit; }
+.ts-진행중 { background: var(--amber-light); color: var(--amber); } .ts-완료 { background: var(--sage-light); color: #4A7A68; } .ts-대기 { background: #F3F4F6; color: var(--text-muted); }
+.add-round-btn { font-size: 10px; color: var(--sage); background: none; border: 1px solid var(--sage); border-radius: 4px; padding: 2px 7px; cursor: pointer; font-family: inherit; font-weight: 500; white-space: nowrap; }
+.add-round-btn:hover { background: var(--sage-light); }
+
+/* TIMELINE */
+.timeline { position: relative; padding-left: 16px; }
+.timeline::before { content: ''; position: absolute; left: 5px; top: 5px; bottom: 5px; width: 1px; background: var(--border); }
+.round-item { position: relative; margin-bottom: 12px; }
+.round-item:last-child { margin-bottom: 0; }
+.round-dot-line { position: absolute; left: -13px; top: 4px; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid #FAFAF9; box-shadow: 0 0 0 1px var(--border); }
+.round-dot-line.contents { background: var(--sage); } .round-dot-line.design { background: var(--amber); } .round-dot-line.material { background: var(--purple); }
+.round-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
+.round-num-label { font-size: 11px; font-weight: 600; color: var(--navy); }
+.round-date-label { font-size: 10px; color: var(--text-muted); }
+.round-lab-label { font-size: 10px; color: var(--purple); font-weight: 500; background: var(--purple-light); padding: 1px 6px; border-radius: 3px; }
+.round-feedback-text { font-size: 11px; color: var(--text-secondary); line-height: 1.55; background: white; border: 1px solid var(--border); border-radius: 5px; padding: 6px 8px; }
+.round-feedback-row { margin-bottom: 4px; }
+.round-feedback-row:last-child { margin-bottom: 0; }
+.feedback-who { font-size: 10px; font-weight: 600; margin-bottom: 2px; }
+.feedback-who.sindy { color: var(--sage); } .feedback-who.team { color: var(--amber); }
+.round-result-text { font-size: 11px; color: var(--sage); margin-top: 4px; font-weight: 500; }
+.track-empty { font-size: 11px; color: var(--text-muted); padding: 8px 0; }
+.product-delete-btn { font-size: 10px; color: #EF4444; background: none; border: 1px solid #FCA5A5; border-radius: 4px; padding: 2px 7px; cursor: pointer; font-family: inherit; font-weight: 500; }
+.product-delete-btn:hover { background: #FEF2F2; }
+
+/* MODAL */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: white; border-radius: 12px; padding: 22px; width: 480px; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+.modal-sm { width: 440px; }
+.modal-title { font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 16px; }
+.form-row { margin-bottom: 12px; }
+.form-label { font-size: 11px; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px; display: block; }
+.form-input, .form-select, .form-textarea { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 13px; font-family: inherit; color: var(--navy); background: var(--bg); outline: none; }
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--sage); background: white; }
+.form-textarea { resize: vertical; min-height: 64px; }
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.btn-cancel { padding: 7px 14px; border: 1px solid var(--border); border-radius: 6px; background: none; font-size: 12px; cursor: pointer; font-family: inherit; color: var(--text-secondary); }
+.btn-save { padding: 7px 14px; border: none; border-radius: 6px; background: var(--navy); color: white; font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 500; }
+.feedback-split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.feedback-box-label { font-size: 11px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
+.fb-sindy { color: var(--sage); } .fb-team { color: var(--amber); }
+.fb-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.fb-dot.sindy { background: var(--sage); } .fb-dot.team { background: var(--amber); }
+.section-divider-label { font-size: 10px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 8px; }
+.empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); font-size: 13px; line-height: 1.8; }
+.empty-state-icon { font-size: 32px; margin-bottom: 12px; }
+.toast { position: fixed; bottom: 24px; right: 24px; background: var(--navy); color: white; padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; z-index: 200; opacity: 0; transform: translateY(8px); transition: all 0.25s; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="loading-bar" id="loading-bar"></div>
+
+<div class="header">
+  <div class="header-left">
+    <div class="brand-dot"></div>
+    <span class="brand-name">HIDIF</span>
+    <span class="brand-sub">피드백 트래커</span>
+  </div>
+  <div class="header-right">
+    <button class="header-btn" onclick="openProductModal()"><span style="font-size:15px;line-height:1">+</span> 제품 추가</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-icon contents">🧪</div><div><div class="stat-label">내용물 트랙</div><div class="stat-pills" id="stat-contents"></div></div></div>
+    <div class="stat-card"><div class="stat-icon design">🎨</div><div><div class="stat-label">디자인 트랙</div><div class="stat-pills" id="stat-design"></div></div></div>
+    <div class="stat-card"><div class="stat-icon material">📦</div><div><div class="stat-label">부자재 트랙</div><div class="stat-pills" id="stat-material"></div></div></div>
+  </div>
+  <div class="filter-bar">
+    <span class="filter-label">카테고리</span>
+    <button class="filter-btn active" onclick="setFilter('all',this)">전체</button>
+    <button class="filter-btn" onclick="setFilter('스킨케어',this)">스킨케어</button>
+    <button class="filter-btn" onclick="setFilter('라이프스타일',this)">라이프스타일</button>
+    <button class="filter-btn" onclick="setFilter('메이크업',this)">메이크업</button>
+    <button class="filter-btn" onclick="setFilter('헤어케어',this)">헤어케어</button>
+  </div>
+  <div class="section-header">
+    <span class="section-title">제품 목록</span>
+    <span class="section-count" id="list-count">0개</span>
+  </div>
+  <div id="product-list"></div>
+</div>
+
+<!-- PRODUCT MODAL -->
+<div class="modal-overlay" id="product-modal">
+  <div class="modal">
+    <div class="modal-title">새 제품 등록</div>
+    <div class="form-row"><label class="form-label">제품명 *</label><input class="form-input" id="f-name" placeholder="예: 센시티브 수분 세럼"></div>
+    <div class="form-row"><label class="form-label">카테고리 *</label>
+      <select class="form-select" id="f-category">
+        <option value="스킨케어">스킨케어</option>
+        <option value="라이프스타일">라이프스타일</option>
+        <option value="메이크업">메이크업</option>
+        <option value="헤어케어">헤어케어</option>
+      </select>
+    </div>
+    <div class="form-row-2">
+      <div><label class="form-label">런칭일</label><input class="form-input" id="f-launch" type="date"></div>
+      <div><label class="form-label">런칭 목표일</label><input class="form-input" id="f-launch-target" type="date"></div>
+      <div><label class="form-label">발주 예정일</label><input class="form-input" id="f-order-plan" type="date"></div>
+      <div><label class="form-label">발주일</label><input class="form-input" id="f-order" type="date"></div>
+    </div>
+    <div class="form-row"><label class="form-label">타겟 제품</label><textarea class="form-textarea" id="f-goal" placeholder="예: 민감성 피부를 위한 무향 수분 세럼, 2025 봄 런칭 목표"></textarea></div>
+    <div class="form-row"><label class="form-label">주요 성분 및 특이사항</label><textarea class="form-textarea" id="f-notes" placeholder="예: 히알루론산, 판테놀, 무향료, 무알코올"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('product-modal')">취소</button>
+      <button class="btn-save" onclick="saveProduct()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ROUND MODAL 내용물 -->
+<div class="modal-overlay" id="round-modal-contents">
+  <div class="modal">
+    <div class="modal-title" id="round-title-contents">내용물 차수 추가</div>
+    <div class="form-row-3">
+      <div><label class="form-label">차수</label><input class="form-input" id="rc-round" placeholder="예: 1차"></div>
+      <div><label class="form-label">수령일</label><input class="form-input" id="rc-date" type="date"></div>
+      <div><label class="form-label">랩 넘버</label><input class="form-input" id="rc-lab" placeholder="예: LAB-001"></div>
+    </div>
+    <div class="form-row">
+      <div class="section-divider-label">피드백</div>
+      <div class="feedback-split">
+        <div><div class="feedback-box-label fb-sindy"><span class="fb-dot sindy"></span> 신디</div><textarea class="form-textarea" id="rc-fb-sindy" placeholder="신디 피드백" style="min-height:80px"></textarea></div>
+        <div><div class="feedback-box-label fb-team"><span class="fb-dot team"></span> 팀</div><textarea class="form-textarea" id="rc-fb-team" placeholder="팀 피드백" style="min-height:80px"></textarea></div>
+      </div>
+    </div>
+    <div class="form-row"><label class="form-label">개선 액션</label><textarea class="form-textarea" id="rc-result" placeholder="예: 카보머 0.3% → 0.2% 조정, 2차 샘플 요청"></textarea></div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('round-modal-contents')">취소</button><button class="btn-save" onclick="saveRound('contents')">저장</button></div>
+  </div>
+</div>
+
+<!-- ROUND MODAL 디자인 -->
+<div class="modal-overlay" id="round-modal-design">
+  <div class="modal modal-sm">
+    <div class="modal-title" id="round-title-design">디자인 차수 추가</div>
+    <div class="form-row-2">
+      <div><label class="form-label">차수</label><input class="form-input" id="rd-round" placeholder="예: 1차"></div>
+      <div><label class="form-label">수령일</label><input class="form-input" id="rd-date" type="date"></div>
+    </div>
+    <div class="form-row"><label class="form-label">피드백</label><textarea class="form-textarea" id="rd-feedback" style="min-height:90px"></textarea></div>
+    <div class="form-row"><label class="form-label">개선 액션</label><textarea class="form-textarea" id="rd-result"></textarea></div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('round-modal-design')">취소</button><button class="btn-save" onclick="saveRound('design')">저장</button></div>
+  </div>
+</div>
+
+<!-- ROUND MODAL 부자재 -->
+<div class="modal-overlay" id="round-modal-material">
+  <div class="modal modal-sm">
+    <div class="modal-title" id="round-title-material">부자재 차수 추가</div>
+    <div class="form-row-2">
+      <div><label class="form-label">차수</label><input class="form-input" id="rm-round" placeholder="예: 1차"></div>
+      <div><label class="form-label">수령일</label><input class="form-input" id="rm-date" type="date"></div>
+    </div>
+    <div class="form-row"><label class="form-label">피드백</label><textarea class="form-textarea" id="rm-feedback" style="min-height:90px"></textarea></div>
+    <div class="form-row"><label class="form-label">개선 액션</label><textarea class="form-textarea" id="rm-result"></textarea></div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('round-modal-material')">취소</button><button class="btn-save" onclick="saveRound('material')">저장</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// Supabase 설정 — 아래 두 줄을 본인 값으로 교체하세요
+// ============================================================
+const SUPABASE_URL = 'https://qrjcyeruvzupfqfiaqsv.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Kvt_V6me4pWxl6LvxM6ZmA_4Xd3coGj';
+// ============================================================
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let products = [], rounds = [], currentFilter = 'all', currentProductId = null;
+const TRACKS = ['contents','design','material'];
+const TRACK_LABELS = {contents:'내용물', design:'디자인', material:'부자재'};
+const STATUS_CYCLE = ['대기','진행중','완료'];
+const CAT_CLASS = {스킨케어:'cat-skincare',라이프스타일:'cat-lifestyle',메이크업:'cat-makeup',헤어케어:'cat-haircare'};
+
+// ── 로딩 ──
+function setLoading(on) { document.getElementById('loading-bar').classList.toggle('show', on); }
+
+// ── 토스트 ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── 데이터 로드 ──
+async function load() {
+  setLoading(true);
+  try {
+    const [{ data: pData }, { data: rData }] = await Promise.all([
+      db.from('products').select('*').order('created_at', { ascending: false }),
+      db.from('rounds').select('*').order('created_at', { ascending: true })
+    ]);
+    products = pData || [];
+    rounds = rData || [];
+    render();
+  } catch(e) {
+    showToast('데이터 로드 실패 — Supabase 연결을 확인해주세요');
+  }
+  setLoading(false);
+}
+
+// ── 렌더 ──
+function render() {
+  renderStats();
+  const filtered = currentFilter === 'all' ? products : products.filter(p => p.category === currentFilter);
+  document.getElementById('list-count').textContent = filtered.length + '개';
+  const list = document.getElementById('product-list');
+  if (!filtered.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div>등록된 제품이 없어요.<br>우상단 "+ 제품 추가" 버튼으로 첫 제품을 등록해보세요.</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(p => renderProduct(p)).join('');
+}
+
+function renderStats() {
+  TRACKS.forEach(t => {
+    const c = {진행중:0, 완료:0, 대기:0};
+    products.forEach(p => {
+      const r = rounds.filter(r => r.product_id === p.id && r.track === t);
+      const status = r.length > 0 ? (r[r.length-1].track_status || '대기') : '대기';
+      c[status]++;
+    });
+    document.getElementById('stat-'+t).innerHTML =
+      `<span class="stat-pill pill-progress">${c['진행중']} 진행중</span>
+       <span class="stat-pill pill-done">${c['완료']} 완료</span>
+       <span class="stat-pill pill-pending">${c['대기']} 대기</span>`;
+  });
+}
+
+function getTrackStatus(productId, track) {
+  const trackRounds = rounds.filter(r => r.product_id === productId && r.track === track);
+  if (!trackRounds.length) return '대기';
+  return trackRounds[trackRounds.length - 1].track_status || '대기';
+}
+
+function getTrackRounds(productId, track) {
+  return rounds.filter(r => r.product_id === productId && r.track === track);
+}
+
+function renderProduct(p) {
+  const catClass = CAT_CLASS[p.category] || 'cat-skincare';
+  const trackMinis = TRACKS.map(t => {
+    const status = getTrackStatus(p.id, t);
+    const rCount = getTrackRounds(p.id, t).length;
+    return `<span class="track-mini ${status==='대기'?'pending':t}">${TRACK_LABELS[t]} ${rCount>0?rCount+'차':status}</span>`;
+  }).join('');
+
+  const tracksHtml = TRACKS.map(t => {
+    const status = getTrackStatus(p.id, t);
+    const trackRounds = getTrackRounds(p.id, t);
+    const timelineHtml = !trackRounds.length
+      ? `<div class="track-empty">아직 샘플링 기록 없음</div>`
+      : trackRounds.map(r => {
+          const feedbackHtml = t === 'contents'
+            ? `<div class="round-feedback-text">
+                ${r.fb_sindy?`<div class="round-feedback-row"><div class="feedback-who sindy">신디</div><div>${r.fb_sindy}</div></div>`:''}
+                ${r.fb_team?`<div class="round-feedback-row"><div class="feedback-who team">팀</div><div>${r.fb_team}</div></div>`:''}
+               </div>`
+            : `<div class="round-feedback-text">${r.feedback||''}</div>`;
+          return `<div class="round-item">
+            <div class="round-dot-line ${t}"></div>
+            <div class="round-meta">
+              <span class="round-num-label">${r.round_label||''}</span>
+              ${r.date?`<span class="round-date-label">· ${r.date}</span>`:''}
+              ${r.lab_number?`<span class="round-lab-label">${r.lab_number}</span>`:''}
+            </div>
+            ${feedbackHtml}
+            ${r.result?`<div class="round-result-text">→ ${r.result}</div>`:''}
+          </div>`;
+        }).join('');
+
+    return `<div class="track">
+      <div class="track-header">
+        <div class="track-title-row">
+          <div class="track-dot ${t}"></div>
+          <span class="track-name">${TRACK_LABELS[t]}</span>
+          <button class="track-status ts-${status}" onclick="cycleStatus('${p.id}','${t}',event)">${status}</button>
+        </div>
+        <button class="add-round-btn" onclick="openRoundModal('${p.id}','${t}')">+ 차수</button>
+      </div>
+      <div class="timeline">${timelineHtml}</div>
+    </div>`;
+  }).join('');
+
+  const dates = [
+    p.launch ? `<div><div class="info-item-label">런칭일</div><div class="info-item-value">${p.launch}</div></div>` : '',
+    p.launch_target ? `<div><div class="info-item-label">런칭 목표일</div><div class="info-item-value">${p.launch_target}</div></div>` : '',
+    p.order_plan ? `<div><div class="info-item-label">발주 예정일</div><div class="info-item-value">${p.order_plan}</div></div>` : '',
+    p.order_date ? `<div><div class="info-item-label">발주일</div><div class="info-item-value">${p.order_date}</div></div>` : '',
+    p.notes ? `<div><div class="info-item-label">주요 성분 및 특이사항</div><div class="info-item-value">${p.notes}</div></div>` : '',
+  ].filter(Boolean).join('');
+
+  return `<div class="product-card" id="card-${p.id}">
+    <div class="product-card-header" onclick="toggleCard('${p.id}')">
+      <div class="product-left">
+        <span class="cat-badge ${catClass}">${p.category}</span>
+        <div>
+          <div class="product-name">${p.name}</div>
+          <div class="product-goal">${p.goal||'타겟 제품 미입력'}</div>
+        </div>
+      </div>
+      <div class="product-right">
+        <div class="track-summary">${trackMinis}</div>
+        <button class="product-delete-btn" onclick="deleteProduct('${p.id}',event)">삭제</button>
+        <span class="expand-icon" id="icon-${p.id}">▼</span>
+      </div>
+    </div>
+    <div class="product-detail" id="detail-${p.id}">
+      <div class="info-row">${dates}</div>
+      <div class="tracks-container">${tracksHtml}</div>
+    </div>
+  </div>`;
+}
+
+function toggleCard(id) {
+  const d = document.getElementById('detail-'+id), i = document.getElementById('icon-'+id);
+  d.classList.toggle('open'); i.classList.toggle('open');
+}
+
+// ── 상태 순환 ──
+async function cycleStatus(productId, track, e) {
+  e.stopPropagation();
+  const trackRounds = getTrackRounds(productId, track);
+  if (!trackRounds.length) { showToast('차수를 먼저 추가해주세요'); return; }
+  const lastRound = trackRounds[trackRounds.length - 1];
+  const cur = lastRound.track_status || '대기';
+  const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur)+1) % STATUS_CYCLE.length];
+
+  // 같은 트랙의 모든 차수 상태 업데이트
+  const ids = trackRounds.map(r => r.id);
+  await db.from('rounds').update({ track_status: next }).in('id', ids);
+  rounds = rounds.map(r => ids.includes(r.id) ? {...r, track_status: next} : r);
+  render();
+  setTimeout(() => {
+    const d = document.getElementById('detail-'+productId), i = document.getElementById('icon-'+productId);
+    if (d) { d.classList.add('open'); i.classList.add('open'); }
+  }, 10);
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active'); render();
+}
+
+// ── 제품 추가 ──
+function openProductModal() {
+  ['f-name','f-goal','f-notes','f-launch','f-launch-target','f-order-plan','f-order'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('product-modal').classList.add('open');
+}
+
+async function saveProduct() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { alert('제품명을 입력해주세요.'); return; }
+  setLoading(true);
+  const { data, error } = await db.from('products').insert([{
+    name,
+    category: document.getElementById('f-category').value,
+    launch: document.getElementById('f-launch').value || null,
+    launch_target: document.getElementById('f-launch-target').value || null,
+    order_plan: document.getElementById('f-order-plan').value || null,
+    order_date: document.getElementById('f-order').value || null,
+    goal: document.getElementById('f-goal').value.trim(),
+    notes: document.getElementById('f-notes').value.trim(),
+  }]).select();
+  if (!error && data) {
+    products.unshift(data[0]);
+    render(); closeModal('product-modal'); showToast('제품이 등록됐어요 ✓');
+  } else { showToast('저장 실패 — 다시 시도해주세요'); }
+  setLoading(false);
+}
+
+// ── 제품 삭제 ──
+async function deleteProduct(id, e) {
+  e.stopPropagation();
+  const p = products.find(x => x.id === id);
+  if (!confirm(`"${p.name}" 제품을 삭제할까요?\n모든 샘플링 기록이 함께 삭제돼요.`)) return;
+  setLoading(true);
+  await db.from('products').delete().eq('id', id);
+  products = products.filter(x => x.id !== id);
+  rounds = rounds.filter(x => x.product_id !== id);
+  render(); showToast('제품이 삭제됐어요');
+  setLoading(false);
+}
+
+// ── 차수 추가 ──
+function openRoundModal(productId, track) {
+  currentProductId = productId;
+  const p = products.find(x => x.id === productId);
+  const count = getTrackRounds(productId, track).length + 1;
+  const today = new Date().toISOString().slice(0,10);
+
+  if (track === 'contents') {
+    document.getElementById('round-title-contents').textContent = `${p.name} — 내용물 ${count}차`;
+    document.getElementById('rc-round').value = count+'차';
+    document.getElementById('rc-date').value = today;
+    ['rc-lab','rc-fb-sindy','rc-fb-team','rc-result'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('round-modal-contents').classList.add('open');
+  } else if (track === 'design') {
+    document.getElementById('round-title-design').textContent = `${p.name} — 디자인 ${count}차`;
+    document.getElementById('rd-round').value = count+'차';
+    document.getElementById('rd-date').value = today;
+    ['rd-feedback','rd-result'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('round-modal-design').classList.add('open');
+  } else {
+    document.getElementById('round-title-material').textContent = `${p.name} — 부자재 ${count}차`;
+    document.getElementById('rm-round').value = count+'차';
+    document.getElementById('rm-date').value = today;
+    ['rm-feedback','rm-result'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('round-modal-material').classList.add('open');
+  }
+}
+
+async function saveRound(track) {
+  const p = products.find(x => x.id === currentProductId);
+  const curStatus = getTrackStatus(currentProductId, track);
+  const newStatus = curStatus === '대기' ? '진행중' : curStatus;
+  let payload = { product_id: currentProductId, track, track_status: newStatus };
+
+  if (track === 'contents') {
+    const fbSindy = document.getElementById('rc-fb-sindy').value.trim();
+    const fbTeam = document.getElementById('rc-fb-team').value.trim();
+    if (!fbSindy && !fbTeam) { alert('피드백을 최소 하나 입력해주세요.'); return; }
+    payload = { ...payload, round_label: document.getElementById('rc-round').value.trim(), date: document.getElementById('rc-date').value || null, lab_number: document.getElementById('rc-lab').value.trim(), fb_sindy: fbSindy, fb_team: fbTeam, result: document.getElementById('rc-result').value.trim() };
+    closeModal('round-modal-contents');
+  } else if (track === 'design') {
+    const feedback = document.getElementById('rd-feedback').value.trim();
+    if (!feedback) { alert('피드백을 입력해주세요.'); return; }
+    payload = { ...payload, round_label: document.getElementById('rd-round').value.trim(), date: document.getElementById('rd-date').value || null, feedback, result: document.getElementById('rd-result').value.trim() };
+    closeModal('round-modal-design');
+  } else {
+    const feedback = document.getElementById('rm-feedback').value.trim();
+    if (!feedback) { alert('피드백을 입력해주세요.'); return; }
+    payload = { ...payload, round_label: document.getElementById('rm-round').value.trim(), date: document.getElementById('rm-date').value || null, feedback, result: document.getElementById('rm-result').value.trim() };
+    closeModal('round-modal-material');
+  }
+
+  setLoading(true);
+  const { data, error } = await db.from('rounds').insert([payload]).select();
+  if (!error && data) {
+    rounds.push(data[0]);
+    render(); showToast('차수가 기록됐어요 ✓');
+    setTimeout(() => {
+      const d = document.getElementById('detail-'+currentProductId), i = document.getElementById('icon-'+currentProductId);
+      if (d) { d.classList.add('open'); i.classList.add('open'); }
+    }, 10);
+  } else { showToast('저장 실패 — 다시 시도해주세요'); }
+  setLoading(false);
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+load();
+</script>
+</body>
+</html>
