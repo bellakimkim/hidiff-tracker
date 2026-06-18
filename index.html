@@ -126,6 +126,37 @@ body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; backgrou
 .round-delete-btn { color: #EF4444; border: 1px solid #FCA5A5; background: white; }
 .round-delete-btn:hover { background: #FEF2F2; }
 
+/* MOODBOARD */
+.moodboard-section { border-top: 1px solid var(--border); background: #FAFAF9; }
+.moodboard-header { padding: 9px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+.moodboard-header:hover { background: #F5F4F2; }
+.moodboard-title-row { display: flex; align-items: center; gap: 7px; }
+.moodboard-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+.moodboard-count { font-size: 10px; color: var(--text-muted); background: #EBEBEB; padding: 1px 7px; border-radius: 10px; }
+.moodboard-gallery { display: none; padding: 4px 16px 14px; }
+.moodboard-gallery.open { display: block; }
+.moodboard-grid { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+.moodboard-thumb-wrap { position: relative; flex-shrink: 0; }
+.moodboard-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; display: block; transition: opacity 0.15s; }
+.moodboard-thumb:hover { opacity: 0.82; }
+.moodboard-del-btn { position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; border-radius: 50%; background: #EF4444; color: white; border: 1.5px solid white; cursor: pointer; font-size: 9px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s; line-height: 1; padding: 0; font-family: inherit; }
+.moodboard-thumb-wrap:hover .moodboard-del-btn { opacity: 1; }
+.moodboard-add-label { width: 80px; height: 80px; border: 1.5px dashed var(--border); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 11px; gap: 3px; transition: all 0.15s; user-select: none; flex-shrink: 0; }
+.moodboard-add-label:hover { border-color: var(--sage); color: var(--sage); background: var(--sage-light); }
+.moodboard-add-label .plus { font-size: 20px; line-height: 1; font-weight: 300; }
+
+/* LIGHTBOX */
+.lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 400; align-items: center; justify-content: center; }
+.lightbox.open { display: flex; }
+.lightbox-img { max-width: 88vw; max-height: 88vh; object-fit: contain; border-radius: 6px; display: block; }
+.lightbox-close { position: absolute; top: 18px; right: 22px; background: none; border: none; color: white; font-size: 26px; cursor: pointer; opacity: 0.7; line-height: 1; padding: 4px; }
+.lightbox-close:hover { opacity: 1; }
+.lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.12); border: none; color: white; font-size: 36px; cursor: pointer; padding: 10px 16px; border-radius: 8px; line-height: 1; transition: background 0.15s; }
+.lightbox-nav:hover { background: rgba(255,255,255,0.22); }
+.lightbox-prev { left: 18px; }
+.lightbox-next { right: 18px; }
+.lightbox-counter { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.55); font-size: 12px; pointer-events: none; }
+
 /* MODAL */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
 .modal-overlay.open { display: flex; }
@@ -300,6 +331,15 @@ body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; backgrou
   </div>
 </div>
 
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <button class="lightbox-nav lightbox-prev" onclick="lightboxNav(-1,event)">‹</button>
+  <img class="lightbox-img" id="lightbox-img" src="" alt="무드보드 이미지" onclick="event.stopPropagation()">
+  <button class="lightbox-nav lightbox-next" onclick="lightboxNav(1,event)">›</button>
+  <div class="lightbox-counter" id="lightbox-counter"></div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -309,10 +349,12 @@ const SUPABASE_ANON_KEY = 'sb_publishable_Kvt_V6me4pWxl6LvxM6ZmA_4Xd3coGj';
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let products = [], rounds = [], categories = [], managers = [];
+let products = [], rounds = [], categories = [], managers = [], moodboards = [];
 let currentFilter = 'all', currentProductId = null;
 let productModalMode = 'add', currentEditProductId = null;
 let roundModalMode = 'add', currentEditRoundId = null;
+const openMoodboards = new Set();
+let lightboxImages = [], lightboxIdx = 0;
 
 const TRACKS = ['contents','design','material'];
 const TRACK_LABELS = {contents:'내용물', design:'디자인', material:'부자재'};
@@ -335,17 +377,36 @@ async function load() {
     ]);
     products = pData || [];
     rounds = rData || [];
-    const [{ data: cData }, { data: mData }] = await Promise.all([
+    const [{ data: cData }, { data: mData }, { data: mbData }] = await Promise.all([
       db.from('categories').select('*').order('name'),
-      db.from('managers').select('*').order('name')
+      db.from('managers').select('*').order('name'),
+      db.from('moodboards').select('*').order('created_at', { ascending: true })
     ]);
     categories = cData || [];
     managers = mData || [];
+    moodboards = mbData || [];
   } catch(e) {
     showToast('데이터 로드 실패 — Supabase 연결을 확인해주세요');
   }
   render();
   setLoading(false);
+}
+
+// render 후 열려있던 상태 복원
+function restoreOpenStates(productDetailId = null) {
+  setTimeout(() => {
+    openMoodboards.forEach(pid => {
+      const g = document.getElementById('moodboard-gallery-'+pid);
+      const i = document.getElementById('moodboard-icon-'+pid);
+      if (g) g.classList.add('open');
+      if (i) i.classList.add('open');
+    });
+    if (productDetailId) {
+      const d = document.getElementById('detail-'+productDetailId);
+      const i = document.getElementById('icon-'+productDetailId);
+      if (d) { d.classList.add('open'); i.classList.add('open'); }
+    }
+  }, 10);
 }
 
 function render() {
@@ -482,6 +543,36 @@ function renderProduct(p) {
     p.notes ? `<div><div class="info-item-label">주요 성분 및 특이사항</div><div class="info-item-value">${p.notes}</div></div>` : '',
   ].filter(Boolean).join('');
 
+  // 무드보드 섹션
+  const productMoodboards = moodboards.filter(m => m.product_id === p.id);
+  const mbOpen = openMoodboards.has(p.id);
+  const thumbsHtml = productMoodboards.map((m, idx) =>
+    `<div class="moodboard-thumb-wrap">
+      <img class="moodboard-thumb" src="${m.image_url}" alt="무드보드" onclick="openLightbox('${p.id}',${idx})">
+      <button class="moodboard-del-btn" onclick="deleteMoodboard('${m.id}','${p.id}',event)">✕</button>
+    </div>`
+  ).join('');
+  const moodboardHtml = `
+    <div class="moodboard-section">
+      <div class="moodboard-header" onclick="toggleMoodboard('${p.id}')">
+        <div class="moodboard-title-row">
+          <span style="font-size:13px">🎨</span>
+          <span class="moodboard-label">디자인 무드보드</span>
+          ${productMoodboards.length ? `<span class="moodboard-count">${productMoodboards.length}장</span>` : ''}
+        </div>
+        <span class="expand-icon${mbOpen?' open':''}" id="moodboard-icon-${p.id}">▼</span>
+      </div>
+      <div class="moodboard-gallery${mbOpen?' open':''}" id="moodboard-gallery-${p.id}">
+        <div class="moodboard-grid">
+          ${thumbsHtml}
+          <label class="moodboard-add-label" for="mb-file-${p.id}">
+            <span class="plus">+</span>추가
+          </label>
+          <input type="file" id="mb-file-${p.id}" accept="image/jpeg,image/png" multiple style="display:none" onchange="uploadMoodboardImages('${p.id}',this)">
+        </div>
+      </div>
+    </div>`;
+
   return `<div class="product-card" id="card-${p.id}">
     <div class="product-card-header" onclick="toggleCard('${p.id}')">
       <div class="product-left">
@@ -498,6 +589,7 @@ function renderProduct(p) {
         <span class="expand-icon" id="icon-${p.id}">▼</span>
       </div>
     </div>
+    ${moodboardHtml}
     <div class="product-detail" id="detail-${p.id}">
       <div class="info-row">${infoItems}</div>
       <div class="tracks-container">${tracksHtml}</div>
@@ -510,6 +602,16 @@ function toggleCard(id) {
   d.classList.toggle('open'); i.classList.toggle('open');
 }
 
+function toggleMoodboard(productId) {
+  const gallery = document.getElementById('moodboard-gallery-'+productId);
+  const icon = document.getElementById('moodboard-icon-'+productId);
+  if (!gallery) return;
+  const isOpen = gallery.classList.contains('open');
+  gallery.classList.toggle('open', !isOpen);
+  icon.classList.toggle('open', !isOpen);
+  if (isOpen) { openMoodboards.delete(productId); } else { openMoodboards.add(productId); }
+}
+
 async function cycleStatus(productId, track, e) {
   e.stopPropagation();
   const trackRounds = getTrackRounds(productId, track);
@@ -520,10 +622,7 @@ async function cycleStatus(productId, track, e) {
   await db.from('rounds').update({ track_status: next }).in('id', ids);
   rounds = rounds.map(r => ids.includes(r.id) ? {...r, track_status: next} : r);
   render();
-  setTimeout(() => {
-    const d = document.getElementById('detail-'+productId), i = document.getElementById('icon-'+productId);
-    if (d) { d.classList.add('open'); i.classList.add('open'); }
-  }, 10);
+  restoreOpenStates(productId);
 }
 
 function setFilter(f) {
@@ -595,6 +694,8 @@ async function deleteProduct(id, e) {
   await db.from('products').delete().eq('id', id);
   products = products.filter(x => x.id !== id);
   rounds = rounds.filter(x => x.product_id !== id);
+  moodboards = moodboards.filter(x => x.product_id !== id);
+  openMoodboards.delete(id);
   render(); showToast('제품이 삭제됐어요');
   setLoading(false);
 }
@@ -723,10 +824,7 @@ async function saveRound(track) {
     } else { showToast('저장 실패 — 다시 시도해주세요'); }
   }
   render();
-  setTimeout(() => {
-    const d = document.getElementById('detail-'+currentProductId), i = document.getElementById('icon-'+currentProductId);
-    if (d) { d.classList.add('open'); i.classList.add('open'); }
-  }, 10);
+  restoreOpenStates(currentProductId);
   setLoading(false);
 }
 
@@ -738,14 +836,88 @@ async function deleteRound(roundId, productId, e) {
   if (!error) {
     rounds = rounds.filter(r => r.id !== roundId);
     render();
+    restoreOpenStates(productId);
     showToast('차수가 삭제됐어요');
-    setTimeout(() => {
-      const d = document.getElementById('detail-'+productId), i = document.getElementById('icon-'+productId);
-      if (d) { d.classList.add('open'); i.classList.add('open'); }
-    }, 10);
   } else { showToast('삭제 실패'); }
   setLoading(false);
 }
+
+// ── 무드보드 ──
+async function uploadMoodboardImages(productId, input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  setLoading(true);
+  const uploadResults = await Promise.all(files.map(async file => {
+    const ext = file.name.split('.').pop().toLowerCase();
+    const filename = `moodboard/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error: upErr } = await db.storage.from('round-images').upload(filename, file, { contentType: file.type });
+    if (upErr) return null;
+    const { data: urlData } = db.storage.from('round-images').getPublicUrl(filename);
+    return urlData.publicUrl;
+  }));
+  const urls = uploadResults.filter(Boolean);
+  if (urls.length) {
+    const rows = urls.map(image_url => ({ product_id: productId, image_url }));
+    const { data, error } = await db.from('moodboards').insert(rows).select();
+    if (!error && data) {
+      moodboards.push(...data);
+      openMoodboards.add(productId);
+      render();
+      restoreOpenStates();
+      showToast(`이미지 ${data.length}장 추가됐어요 ✓`);
+    } else { showToast('저장 실패'); }
+  } else { showToast('이미지 업로드 실패'); }
+  input.value = '';
+  setLoading(false);
+}
+
+async function deleteMoodboard(imageId, productId, e) {
+  e.stopPropagation();
+  if (!confirm('이 이미지를 삭제할까요?')) return;
+  setLoading(true);
+  const { error } = await db.from('moodboards').delete().eq('id', imageId);
+  if (!error) {
+    moodboards = moodboards.filter(m => m.id !== imageId);
+    openMoodboards.add(productId);
+    render();
+    restoreOpenStates();
+    showToast('이미지가 삭제됐어요');
+  } else { showToast('삭제 실패'); }
+  setLoading(false);
+}
+
+// ── 라이트박스 ──
+function openLightbox(productId, idx) {
+  lightboxImages = moodboards.filter(m => m.product_id === productId).map(m => m.image_url);
+  lightboxIdx = idx;
+  updateLightbox();
+  document.getElementById('lightbox').classList.add('open');
+}
+
+function updateLightbox() {
+  document.getElementById('lightbox-img').src = lightboxImages[lightboxIdx];
+  document.getElementById('lightbox-counter').textContent = lightboxImages.length > 1
+    ? `${lightboxIdx + 1} / ${lightboxImages.length}` : '';
+  document.querySelector('.lightbox-prev').style.display = lightboxImages.length > 1 ? '' : 'none';
+  document.querySelector('.lightbox-next').style.display = lightboxImages.length > 1 ? '' : 'none';
+}
+
+function lightboxNav(dir, e) {
+  e.stopPropagation();
+  lightboxIdx = (lightboxIdx + dir + lightboxImages.length) % lightboxImages.length;
+  updateLightbox();
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
+
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('lightbox').classList.contains('open')) return;
+  if (e.key === 'ArrowLeft') { lightboxIdx = (lightboxIdx - 1 + lightboxImages.length) % lightboxImages.length; updateLightbox(); }
+  else if (e.key === 'ArrowRight') { lightboxIdx = (lightboxIdx + 1) % lightboxImages.length; updateLightbox(); }
+  else if (e.key === 'Escape') closeLightbox();
+});
 
 // ── 카테고리 관리 ──
 function openCategoryModal() {
