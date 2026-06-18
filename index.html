@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HIDIF 피드백 트래커</title>
+<title>HIDIFF 피드백 트래커</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,6 +25,8 @@ body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; backgrou
 .header-right { display: flex; align-items: center; gap: 8px; }
 .header-btn { background: var(--sage); color: white; border: none; padding: 9px 18px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 5px; box-shadow: 0 1px 4px rgba(0,0,0,0.18); transition: background 0.15s; }
 .header-btn:hover { background: #6A8E7E; }
+.header-btn-sm { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.2); padding: 7px 12px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+.header-btn-sm:hover { background: rgba(255,255,255,0.18); }
 
 .main { padding: 20px 24px; max-width: 1100px; margin: 0 auto; }
 
@@ -59,7 +61,12 @@ body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; backgrou
 .product-card-header:hover { background: #FAFAF9; }
 .product-left { display: flex; align-items: center; gap: 10px; }
 .cat-badge { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 4px; flex-shrink: 0; }
-.cat-skincare { background: var(--sage-light); color: #4A7A68; } .cat-lifestyle { background: #EEF2FF; color: #4338CA; } .cat-makeup { background: #FDF2F8; color: #9D174D; } .cat-haircare { background: #FFFBEB; color: #92400E; }
+.cat-color-0 { background: var(--sage-light); color: #4A7A68; }
+.cat-color-1 { background: #EEF2FF; color: #4338CA; }
+.cat-color-2 { background: #FDF2F8; color: #9D174D; }
+.cat-color-3 { background: #FFFBEB; color: #92400E; }
+.cat-color-4 { background: #FFF7ED; color: #9A3412; }
+.cat-color-5 { background: #F0FDF4; color: #166534; }
 .product-name { font-size: 14px; font-weight: 600; color: var(--navy); }
 .product-goal { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
 .product-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
@@ -68,6 +75,10 @@ body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; backgrou
 .track-mini.contents { background: var(--sage-light); color: #4A7A68; } .track-mini.design { background: var(--amber-light); color: var(--amber); } .track-mini.material { background: var(--purple-light); color: var(--purple); } .track-mini.pending { background: #F3F4F6; color: var(--text-muted); }
 .expand-icon { font-size: 11px; color: var(--text-muted); transition: transform 0.2s; display: inline-block; }
 .expand-icon.open { transform: rotate(180deg); }
+.product-edit-btn { font-size: 10px; color: var(--sage); background: none; border: 1px solid var(--sage); border-radius: 4px; padding: 2px 7px; cursor: pointer; font-family: inherit; font-weight: 500; }
+.product-edit-btn:hover { background: var(--sage-light); }
+.product-delete-btn { font-size: 10px; color: #EF4444; background: none; border: 1px solid #FCA5A5; border-radius: 4px; padding: 2px 7px; cursor: pointer; font-family: inherit; font-weight: 500; }
+.product-delete-btn:hover { background: #FEF2F2; }
 
 /* DETAIL */
 .product-detail { border-top: 1px solid var(--border); display: none; background: #FAFAF9; }
@@ -106,8 +117,14 @@ body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; backgrou
 .feedback-who.sindy { color: var(--sage); } .feedback-who.team { color: var(--amber); }
 .round-result-text { font-size: 11px; color: var(--sage); margin-top: 4px; font-weight: 500; }
 .track-empty { font-size: 11px; color: var(--text-muted); padding: 8px 0; }
-.product-delete-btn { font-size: 10px; color: #EF4444; background: none; border: 1px solid #FCA5A5; border-radius: 4px; padding: 2px 7px; cursor: pointer; font-family: inherit; font-weight: 500; }
-.product-delete-btn:hover { background: #FEF2F2; }
+.round-image { margin-top: 6px; }
+.round-image img { max-width: 120px; max-height: 80px; border-radius: 5px; border: 1px solid var(--border); object-fit: cover; cursor: pointer; display: block; }
+.round-actions { display: flex; gap: 4px; margin-top: 6px; }
+.round-action-btn { font-size: 9px; padding: 2px 7px; border-radius: 3px; cursor: pointer; font-family: inherit; font-weight: 500; line-height: 1.5; }
+.round-edit-btn { color: var(--text-secondary); border: 1px solid var(--border); background: white; }
+.round-edit-btn:hover { border-color: var(--sage); color: var(--sage); }
+.round-delete-btn { color: #EF4444; border: 1px solid #FCA5A5; background: white; }
+.round-delete-btn:hover { background: #FEF2F2; }
 
 /* MODAL */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
@@ -125,6 +142,8 @@ body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; backgrou
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
 .btn-cancel { padding: 7px 14px; border: 1px solid var(--border); border-radius: 6px; background: none; font-size: 12px; cursor: pointer; font-family: inherit; color: var(--text-secondary); }
 .btn-save { padding: 7px 14px; border: none; border-radius: 6px; background: var(--navy); color: white; font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 500; }
+.btn-add { padding: 7px 14px; border: none; border-radius: 6px; background: var(--sage); color: white; font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 500; white-space: nowrap; }
+.btn-add:hover { background: #6A8E7E; }
 .feedback-split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .feedback-box-label { font-size: 11px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
 .fb-sindy { color: var(--sage); } .fb-team { color: var(--amber); }
@@ -135,6 +154,14 @@ body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; backgrou
 .empty-state-icon { font-size: 32px; margin-bottom: 12px; }
 .toast { position: fixed; bottom: 24px; right: 24px; background: var(--navy); color: white; padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; z-index: 200; opacity: 0; transform: translateY(8px); transition: all 0.25s; pointer-events: none; }
 .toast.show { opacity: 1; transform: translateY(0); }
+
+/* MANAGEMENT MODALS */
+.manage-list { margin-bottom: 12px; max-height: 200px; overflow-y: auto; }
+.manage-item { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; background: var(--bg); }
+.manage-item-name { font-size: 12px; color: var(--navy); }
+.manage-item-delete { font-size: 10px; color: #EF4444; background: none; border: none; cursor: pointer; padding: 2px 6px; font-family: inherit; border-radius: 3px; }
+.manage-item-delete:hover { background: #FEF2F2; }
+.manage-add-row { display: flex; gap: 8px; }
 </style>
 </head>
 <body>
@@ -144,10 +171,12 @@ body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; backgrou
 <div class="header">
   <div class="header-left">
     <div class="brand-dot"></div>
-    <span class="brand-name">HIDIF</span>
+    <span class="brand-name">HIDIFF</span>
     <span class="brand-sub">피드백 트래커</span>
   </div>
   <div class="header-right">
+    <button class="header-btn-sm" onclick="openCategoryModal()">카테고리 관리</button>
+    <button class="header-btn-sm" onclick="openManagerModal()">담당자 관리</button>
     <button class="header-btn" onclick="openProductModal()"><span style="font-size:15px;line-height:1">+</span> 제품 추가</button>
   </div>
 </div>
@@ -158,14 +187,7 @@ body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; backgrou
     <div class="stat-card"><div class="stat-icon design">🎨</div><div><div class="stat-label">디자인 트랙</div><div class="stat-pills" id="stat-design"></div></div></div>
     <div class="stat-card"><div class="stat-icon material">📦</div><div><div class="stat-label">부자재 트랙</div><div class="stat-pills" id="stat-material"></div></div></div>
   </div>
-  <div class="filter-bar">
-    <span class="filter-label">카테고리</span>
-    <button class="filter-btn active" onclick="setFilter('all',this)">전체</button>
-    <button class="filter-btn" onclick="setFilter('스킨케어',this)">스킨케어</button>
-    <button class="filter-btn" onclick="setFilter('라이프스타일',this)">라이프스타일</button>
-    <button class="filter-btn" onclick="setFilter('메이크업',this)">메이크업</button>
-    <button class="filter-btn" onclick="setFilter('헤어케어',this)">헤어케어</button>
-  </div>
+  <div class="filter-bar" id="filter-bar"></div>
   <div class="section-header">
     <span class="section-title">제품 목록</span>
     <span class="section-count" id="list-count">0개</span>
@@ -173,26 +195,20 @@ body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; backgrou
   <div id="product-list"></div>
 </div>
 
-<!-- PRODUCT MODAL -->
+<!-- PRODUCT MODAL (추가 / 수정 공용) -->
 <div class="modal-overlay" id="product-modal">
   <div class="modal">
-    <div class="modal-title">새 제품 등록</div>
+    <div class="modal-title" id="product-modal-title">새 제품 등록</div>
     <div class="form-row"><label class="form-label">제품명 *</label><input class="form-input" id="f-name" placeholder="예: 센시티브 수분 세럼"></div>
-    <div class="form-row"><label class="form-label">카테고리 *</label>
-      <select class="form-select" id="f-category">
-        <option value="스킨케어">스킨케어</option>
-        <option value="라이프스타일">라이프스타일</option>
-        <option value="메이크업">메이크업</option>
-        <option value="헤어케어">헤어케어</option>
-      </select>
-    </div>
+    <div class="form-row"><label class="form-label">카테고리 *</label><select class="form-select" id="f-category"></select></div>
+    <div class="form-row"><label class="form-label">담당자</label><select class="form-select" id="f-manager"></select></div>
     <div class="form-row-2">
       <div><label class="form-label">런칭일</label><input class="form-input" id="f-launch" type="date"></div>
       <div><label class="form-label">런칭 목표일</label><input class="form-input" id="f-launch-target" type="date"></div>
       <div><label class="form-label">발주 예정일</label><input class="form-input" id="f-order-plan" type="date"></div>
       <div><label class="form-label">발주일</label><input class="form-input" id="f-order" type="date"></div>
     </div>
-    <div class="form-row"><label class="form-label">타겟 제품</label><textarea class="form-textarea" id="f-goal" placeholder="예: 민감성 피부를 위한 무향 수분 세럼, 2025 봄 런칭 목표"></textarea></div>
+    <div class="form-row"><label class="form-label">타겟 제품</label><textarea class="form-textarea" id="f-goal" placeholder="예: 민감성 피부를 위한 무향 수분 세럼"></textarea></div>
     <div class="form-row"><label class="form-label">주요 성분 및 특이사항</label><textarea class="form-textarea" id="f-notes" placeholder="예: 히알루론산, 판테놀, 무향료, 무알코올"></textarea></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('product-modal')">취소</button>
@@ -246,40 +262,70 @@ body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; backgrou
     </div>
     <div class="form-row"><label class="form-label">피드백</label><textarea class="form-textarea" id="rm-feedback" style="min-height:90px"></textarea></div>
     <div class="form-row"><label class="form-label">개선 액션</label><textarea class="form-textarea" id="rm-result"></textarea></div>
+    <div id="rm-current-image-wrapper" style="display:none" class="form-row">
+      <label class="form-label">현재 이미지</label>
+      <img id="rm-current-image-preview" style="max-width:120px;max-height:80px;border-radius:5px;border:1px solid var(--border);display:block">
+    </div>
+    <div class="form-row">
+      <label class="form-label">이미지 추가 (JPG / PNG)</label>
+      <input type="file" accept="image/jpeg,image/png" id="rm-image" class="form-input" style="padding:5px">
+    </div>
     <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('round-modal-material')">취소</button><button class="btn-save" onclick="saveRound('material')">저장</button></div>
+  </div>
+</div>
+
+<!-- 카테고리 관리 모달 -->
+<div class="modal-overlay" id="category-modal">
+  <div class="modal modal-sm">
+    <div class="modal-title">카테고리 관리</div>
+    <div class="manage-list" id="category-list"></div>
+    <div class="manage-add-row">
+      <input class="form-input" id="new-category-name" placeholder="새 카테고리명" onkeydown="if(event.key==='Enter')addCategory()">
+      <button class="btn-add" onclick="addCategory()">추가</button>
+    </div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('category-modal')">닫기</button></div>
+  </div>
+</div>
+
+<!-- 담당자 관리 모달 -->
+<div class="modal-overlay" id="manager-modal">
+  <div class="modal modal-sm">
+    <div class="modal-title">담당자 관리</div>
+    <div class="manage-list" id="manager-list"></div>
+    <div class="manage-add-row">
+      <input class="form-input" id="new-manager-name" placeholder="담당자 이름" onkeydown="if(event.key==='Enter')addManager()">
+      <button class="btn-add" onclick="addManager()">추가</button>
+    </div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('manager-modal')">닫기</button></div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-// ============================================================
-// Supabase 설정 — 아래 두 줄을 본인 값으로 교체하세요
-// ============================================================
 const SUPABASE_URL = 'https://qrjcyeruvzupfqfiaqsv.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Kvt_V6me4pWxl6LvxM6ZmA_4Xd3coGj';
-// ============================================================
 
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let products = [], rounds = [], currentFilter = 'all', currentProductId = null;
+let products = [], rounds = [], categories = [], managers = [];
+let currentFilter = 'all', currentProductId = null;
+let productModalMode = 'add', currentEditProductId = null;
+let roundModalMode = 'add', currentEditRoundId = null;
+
 const TRACKS = ['contents','design','material'];
 const TRACK_LABELS = {contents:'내용물', design:'디자인', material:'부자재'};
 const STATUS_CYCLE = ['대기','진행중','완료'];
-const CAT_CLASS = {스킨케어:'cat-skincare',라이프스타일:'cat-lifestyle',메이크업:'cat-makeup',헤어케어:'cat-haircare'};
 
-// ── 로딩 ──
 function setLoading(on) { document.getElementById('loading-bar').classList.toggle('show', on); }
 
-// ── 토스트 ──
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2200);
 }
 
-// ── 데이터 로드 ──
 async function load() {
   setLoading(true);
   try {
@@ -289,16 +335,24 @@ async function load() {
     ]);
     products = pData || [];
     rounds = rData || [];
-    render();
+    const [{ data: cData }, { data: mData }] = await Promise.all([
+      db.from('categories').select('*').order('name'),
+      db.from('managers').select('*').order('name')
+    ]);
+    categories = cData || [];
+    managers = mData || [];
   } catch(e) {
     showToast('데이터 로드 실패 — Supabase 연결을 확인해주세요');
   }
+  render();
   setLoading(false);
 }
 
-// ── 렌더 ──
 function render() {
   renderStats();
+  renderFilterBar();
+  renderCategorySelect();
+  renderManagerSelect();
   const filtered = currentFilter === 'all' ? products : products.filter(p => p.category === currentFilter);
   document.getElementById('list-count').textContent = filtered.length + '개';
   const list = document.getElementById('product-list');
@@ -324,10 +378,41 @@ function renderStats() {
   });
 }
 
+function renderFilterBar() {
+  const fb = document.getElementById('filter-bar');
+  const catBtns = categories.map(c => {
+    const escaped = c.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<button class="filter-btn${currentFilter === c.name ? ' active' : ''}" onclick="setFilter('${escaped}',this)">${c.name}</button>`;
+  }).join('');
+  fb.innerHTML = `<span class="filter-label">카테고리</span>
+    <button class="filter-btn${currentFilter === 'all' ? ' active' : ''}" onclick="setFilter('all',this)">전체</button>
+    ${catBtns}`;
+}
+
+function renderCategorySelect() {
+  const sel = document.getElementById('f-category');
+  const cur = sel.value;
+  sel.innerHTML = categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+function renderManagerSelect() {
+  const sel = document.getElementById('f-manager');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">담당자 없음</option>' +
+    managers.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+function getCatClass(name) {
+  const idx = categories.findIndex(c => c.name === name);
+  return `cat-color-${Math.max(0, idx) % 6}`;
+}
+
 function getTrackStatus(productId, track) {
-  const trackRounds = rounds.filter(r => r.product_id === productId && r.track === track);
-  if (!trackRounds.length) return '대기';
-  return trackRounds[trackRounds.length - 1].track_status || '대기';
+  const tr = rounds.filter(r => r.product_id === productId && r.track === track);
+  if (!tr.length) return '대기';
+  return tr[tr.length - 1].track_status || '대기';
 }
 
 function getTrackRounds(productId, track) {
@@ -335,7 +420,7 @@ function getTrackRounds(productId, track) {
 }
 
 function renderProduct(p) {
-  const catClass = CAT_CLASS[p.category] || 'cat-skincare';
+  const catClass = getCatClass(p.category);
   const trackMinis = TRACKS.map(t => {
     const status = getTrackStatus(p.id, t);
     const rCount = getTrackRounds(p.id, t).length;
@@ -354,6 +439,9 @@ function renderProduct(p) {
                 ${r.fb_team?`<div class="round-feedback-row"><div class="feedback-who team">팀</div><div>${r.fb_team}</div></div>`:''}
                </div>`
             : `<div class="round-feedback-text">${r.feedback||''}</div>`;
+          const imageHtml = (t === 'material' && r.image_url)
+            ? `<div class="round-image"><img src="${r.image_url}" alt="샘플 이미지" onclick="window.open('${r.image_url}','_blank')"></div>`
+            : '';
           return `<div class="round-item">
             <div class="round-dot-line ${t}"></div>
             <div class="round-meta">
@@ -362,7 +450,12 @@ function renderProduct(p) {
               ${r.lab_number?`<span class="round-lab-label">${r.lab_number}</span>`:''}
             </div>
             ${feedbackHtml}
+            ${imageHtml}
             ${r.result?`<div class="round-result-text">→ ${r.result}</div>`:''}
+            <div class="round-actions">
+              <button class="round-action-btn round-edit-btn" onclick="openRoundModal('${p.id}','${t}','${r.id}')">수정</button>
+              <button class="round-action-btn round-delete-btn" onclick="deleteRound('${r.id}','${p.id}',event)">삭제</button>
+            </div>
           </div>`;
         }).join('');
 
@@ -379,11 +472,13 @@ function renderProduct(p) {
     </div>`;
   }).join('');
 
-  const dates = [
+  const manager = p.manager_id ? managers.find(m => m.id === p.manager_id) : null;
+  const infoItems = [
     p.launch ? `<div><div class="info-item-label">런칭일</div><div class="info-item-value">${p.launch}</div></div>` : '',
     p.launch_target ? `<div><div class="info-item-label">런칭 목표일</div><div class="info-item-value">${p.launch_target}</div></div>` : '',
     p.order_plan ? `<div><div class="info-item-label">발주 예정일</div><div class="info-item-value">${p.order_plan}</div></div>` : '',
     p.order_date ? `<div><div class="info-item-label">발주일</div><div class="info-item-value">${p.order_date}</div></div>` : '',
+    manager ? `<div><div class="info-item-label">담당자</div><div class="info-item-value">${manager.name}</div></div>` : '',
     p.notes ? `<div><div class="info-item-label">주요 성분 및 특이사항</div><div class="info-item-value">${p.notes}</div></div>` : '',
   ].filter(Boolean).join('');
 
@@ -398,12 +493,13 @@ function renderProduct(p) {
       </div>
       <div class="product-right">
         <div class="track-summary">${trackMinis}</div>
+        <button class="product-edit-btn" onclick="openProductModal('${p.id}',event)">수정</button>
         <button class="product-delete-btn" onclick="deleteProduct('${p.id}',event)">삭제</button>
         <span class="expand-icon" id="icon-${p.id}">▼</span>
       </div>
     </div>
     <div class="product-detail" id="detail-${p.id}">
-      <div class="info-row">${dates}</div>
+      <div class="info-row">${infoItems}</div>
       <div class="tracks-container">${tracksHtml}</div>
     </div>
   </div>`;
@@ -414,16 +510,12 @@ function toggleCard(id) {
   d.classList.toggle('open'); i.classList.toggle('open');
 }
 
-// ── 상태 순환 ──
 async function cycleStatus(productId, track, e) {
   e.stopPropagation();
   const trackRounds = getTrackRounds(productId, track);
   if (!trackRounds.length) { showToast('차수를 먼저 추가해주세요'); return; }
-  const lastRound = trackRounds[trackRounds.length - 1];
-  const cur = lastRound.track_status || '대기';
+  const cur = trackRounds[trackRounds.length - 1].track_status || '대기';
   const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur)+1) % STATUS_CYCLE.length];
-
-  // 같은 트랙의 모든 차수 상태 업데이트
   const ids = trackRounds.map(r => r.id);
   await db.from('rounds').update({ track_status: next }).in('id', ids);
   rounds = rounds.map(r => ids.includes(r.id) ? {...r, track_status: next} : r);
@@ -434,15 +526,33 @@ async function cycleStatus(productId, track, e) {
   }, 10);
 }
 
-function setFilter(f, btn) {
+function setFilter(f) {
   currentFilter = f;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active'); render();
+  render();
 }
 
-// ── 제품 추가 ──
-function openProductModal() {
-  ['f-name','f-goal','f-notes','f-launch','f-launch-target','f-order-plan','f-order'].forEach(id => document.getElementById(id).value = '');
+// ── 제품 추가 / 수정 ──
+function openProductModal(productId = null, e = null) {
+  if (e) e.stopPropagation();
+  productModalMode = productId ? 'edit' : 'add';
+  currentEditProductId = productId;
+  document.getElementById('product-modal-title').textContent = productId ? '제품 수정' : '새 제품 등록';
+  renderCategorySelect();
+  renderManagerSelect();
+  if (productId) {
+    const p = products.find(x => x.id === productId);
+    document.getElementById('f-name').value = p.name || '';
+    document.getElementById('f-launch').value = p.launch || '';
+    document.getElementById('f-launch-target').value = p.launch_target || '';
+    document.getElementById('f-order-plan').value = p.order_plan || '';
+    document.getElementById('f-order').value = p.order_date || '';
+    document.getElementById('f-goal').value = p.goal || '';
+    document.getElementById('f-notes').value = p.notes || '';
+    document.getElementById('f-category').value = p.category || '';
+    document.getElementById('f-manager').value = p.manager_id || '';
+  } else {
+    ['f-name','f-goal','f-notes','f-launch','f-launch-target','f-order-plan','f-order'].forEach(id => document.getElementById(id).value = '');
+  }
   document.getElementById('product-modal').classList.add('open');
 }
 
@@ -450,7 +560,7 @@ async function saveProduct() {
   const name = document.getElementById('f-name').value.trim();
   if (!name) { alert('제품명을 입력해주세요.'); return; }
   setLoading(true);
-  const { data, error } = await db.from('products').insert([{
+  const payload = {
     name,
     category: document.getElementById('f-category').value,
     launch: document.getElementById('f-launch').value || null,
@@ -459,15 +569,24 @@ async function saveProduct() {
     order_date: document.getElementById('f-order').value || null,
     goal: document.getElementById('f-goal').value.trim(),
     notes: document.getElementById('f-notes').value.trim(),
-  }]).select();
-  if (!error && data) {
-    products.unshift(data[0]);
-    render(); closeModal('product-modal'); showToast('제품이 등록됐어요 ✓');
-  } else { showToast('저장 실패 — 다시 시도해주세요'); }
+    manager_id: document.getElementById('f-manager').value || null,
+  };
+  if (productModalMode === 'edit') {
+    const { data, error } = await db.from('products').update(payload).eq('id', currentEditProductId).select();
+    if (!error && data) {
+      products = products.map(p => p.id === currentEditProductId ? data[0] : p);
+      render(); closeModal('product-modal'); showToast('제품이 수정됐어요 ✓');
+    } else { showToast('수정 실패 — 다시 시도해주세요'); }
+  } else {
+    const { data, error } = await db.from('products').insert([payload]).select();
+    if (!error && data) {
+      products.unshift(data[0]);
+      render(); closeModal('product-modal'); showToast('제품이 등록됐어요 ✓');
+    } else { showToast('저장 실패 — 다시 시도해주세요'); }
+  }
   setLoading(false);
 }
 
-// ── 제품 삭제 ──
 async function deleteProduct(id, e) {
   e.stopPropagation();
   const p = products.find(x => x.id === id);
@@ -480,69 +599,230 @@ async function deleteProduct(id, e) {
   setLoading(false);
 }
 
-// ── 차수 추가 ──
-function openRoundModal(productId, track) {
+// ── 차수 추가 / 수정 ──
+function openRoundModal(productId, track, roundId = null) {
   currentProductId = productId;
+  roundModalMode = roundId ? 'edit' : 'add';
+  currentEditRoundId = roundId;
   const p = products.find(x => x.id === productId);
-  const count = getTrackRounds(productId, track).length + 1;
   const today = new Date().toISOString().slice(0,10);
 
   if (track === 'contents') {
-    document.getElementById('round-title-contents').textContent = `${p.name} — 내용물 ${count}차`;
-    document.getElementById('rc-round').value = count+'차';
-    document.getElementById('rc-date').value = today;
-    ['rc-lab','rc-fb-sindy','rc-fb-team','rc-result'].forEach(id => document.getElementById(id).value = '');
+    if (roundId) {
+      const r = rounds.find(x => x.id === roundId);
+      document.getElementById('round-title-contents').textContent = `${p.name} — 내용물 수정`;
+      document.getElementById('rc-round').value = r.round_label || '';
+      document.getElementById('rc-date').value = r.date || '';
+      document.getElementById('rc-lab').value = r.lab_number || '';
+      document.getElementById('rc-fb-sindy').value = r.fb_sindy || '';
+      document.getElementById('rc-fb-team').value = r.fb_team || '';
+      document.getElementById('rc-result').value = r.result || '';
+    } else {
+      const count = getTrackRounds(productId, track).length + 1;
+      document.getElementById('round-title-contents').textContent = `${p.name} — 내용물 ${count}차`;
+      document.getElementById('rc-round').value = count+'차';
+      document.getElementById('rc-date').value = today;
+      ['rc-lab','rc-fb-sindy','rc-fb-team','rc-result'].forEach(id => document.getElementById(id).value = '');
+    }
     document.getElementById('round-modal-contents').classList.add('open');
   } else if (track === 'design') {
-    document.getElementById('round-title-design').textContent = `${p.name} — 디자인 ${count}차`;
-    document.getElementById('rd-round').value = count+'차';
-    document.getElementById('rd-date').value = today;
-    ['rd-feedback','rd-result'].forEach(id => document.getElementById(id).value = '');
+    if (roundId) {
+      const r = rounds.find(x => x.id === roundId);
+      document.getElementById('round-title-design').textContent = `${p.name} — 디자인 수정`;
+      document.getElementById('rd-round').value = r.round_label || '';
+      document.getElementById('rd-date').value = r.date || '';
+      document.getElementById('rd-feedback').value = r.feedback || '';
+      document.getElementById('rd-result').value = r.result || '';
+    } else {
+      const count = getTrackRounds(productId, track).length + 1;
+      document.getElementById('round-title-design').textContent = `${p.name} — 디자인 ${count}차`;
+      document.getElementById('rd-round').value = count+'차';
+      document.getElementById('rd-date').value = today;
+      ['rd-feedback','rd-result'].forEach(id => document.getElementById(id).value = '');
+    }
     document.getElementById('round-modal-design').classList.add('open');
   } else {
-    document.getElementById('round-title-material').textContent = `${p.name} — 부자재 ${count}차`;
-    document.getElementById('rm-round').value = count+'차';
-    document.getElementById('rm-date').value = today;
-    ['rm-feedback','rm-result'].forEach(id => document.getElementById(id).value = '');
+    if (roundId) {
+      const r = rounds.find(x => x.id === roundId);
+      document.getElementById('round-title-material').textContent = `${p.name} — 부자재 수정`;
+      document.getElementById('rm-round').value = r.round_label || '';
+      document.getElementById('rm-date').value = r.date || '';
+      document.getElementById('rm-feedback').value = r.feedback || '';
+      document.getElementById('rm-result').value = r.result || '';
+      document.getElementById('rm-image').value = '';
+      const wrapper = document.getElementById('rm-current-image-wrapper');
+      if (r.image_url) {
+        wrapper.style.display = 'block';
+        document.getElementById('rm-current-image-preview').src = r.image_url;
+      } else {
+        wrapper.style.display = 'none';
+      }
+    } else {
+      const count = getTrackRounds(productId, track).length + 1;
+      document.getElementById('round-title-material').textContent = `${p.name} — 부자재 ${count}차`;
+      document.getElementById('rm-round').value = count+'차';
+      document.getElementById('rm-date').value = today;
+      ['rm-feedback','rm-result'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('rm-image').value = '';
+      document.getElementById('rm-current-image-wrapper').style.display = 'none';
+    }
     document.getElementById('round-modal-material').classList.add('open');
   }
 }
 
 async function saveRound(track) {
-  const p = products.find(x => x.id === currentProductId);
-  const curStatus = getTrackStatus(currentProductId, track);
-  const newStatus = curStatus === '대기' ? '진행중' : curStatus;
-  let payload = { product_id: currentProductId, track, track_status: newStatus };
+  let payload = {};
+  if (roundModalMode === 'add') {
+    const curStatus = getTrackStatus(currentProductId, track);
+    payload = { product_id: currentProductId, track, track_status: curStatus === '대기' ? '진행중' : curStatus };
+  }
 
   if (track === 'contents') {
     const fbSindy = document.getElementById('rc-fb-sindy').value.trim();
     const fbTeam = document.getElementById('rc-fb-team').value.trim();
     if (!fbSindy && !fbTeam) { alert('피드백을 최소 하나 입력해주세요.'); return; }
-    payload = { ...payload, round_label: document.getElementById('rc-round').value.trim(), date: document.getElementById('rc-date').value || null, lab_number: document.getElementById('rc-lab').value.trim(), fb_sindy: fbSindy, fb_team: fbTeam, result: document.getElementById('rc-result').value.trim() };
+    Object.assign(payload, { round_label: document.getElementById('rc-round').value.trim(), date: document.getElementById('rc-date').value || null, lab_number: document.getElementById('rc-lab').value.trim(), fb_sindy: fbSindy, fb_team: fbTeam, result: document.getElementById('rc-result').value.trim() });
     closeModal('round-modal-contents');
   } else if (track === 'design') {
     const feedback = document.getElementById('rd-feedback').value.trim();
     if (!feedback) { alert('피드백을 입력해주세요.'); return; }
-    payload = { ...payload, round_label: document.getElementById('rd-round').value.trim(), date: document.getElementById('rd-date').value || null, feedback, result: document.getElementById('rd-result').value.trim() };
+    Object.assign(payload, { round_label: document.getElementById('rd-round').value.trim(), date: document.getElementById('rd-date').value || null, feedback, result: document.getElementById('rd-result').value.trim() });
     closeModal('round-modal-design');
   } else {
     const feedback = document.getElementById('rm-feedback').value.trim();
     if (!feedback) { alert('피드백을 입력해주세요.'); return; }
-    payload = { ...payload, round_label: document.getElementById('rm-round').value.trim(), date: document.getElementById('rm-date').value || null, feedback, result: document.getElementById('rm-result').value.trim() };
+    Object.assign(payload, { round_label: document.getElementById('rm-round').value.trim(), date: document.getElementById('rm-date').value || null, feedback, result: document.getElementById('rm-result').value.trim() });
+    const imageFile = document.getElementById('rm-image').files[0];
+    if (imageFile) {
+      setLoading(true);
+      const ext = imageFile.name.split('.').pop().toLowerCase();
+      const filename = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: upErr } = await db.storage.from('round-images').upload(filename, imageFile, { contentType: imageFile.type });
+      if (!upErr) {
+        const { data: urlData } = db.storage.from('round-images').getPublicUrl(filename);
+        payload.image_url = urlData.publicUrl;
+      } else {
+        showToast('이미지 업로드 실패 — 저장은 계속됩니다');
+      }
+    }
     closeModal('round-modal-material');
   }
 
   setLoading(true);
-  const { data, error } = await db.from('rounds').insert([payload]).select();
-  if (!error && data) {
-    rounds.push(data[0]);
-    render(); showToast('차수가 기록됐어요 ✓');
+  if (roundModalMode === 'edit') {
+    const { data, error } = await db.from('rounds').update(payload).eq('id', currentEditRoundId).select();
+    if (!error && data) {
+      rounds = rounds.map(r => r.id === currentEditRoundId ? data[0] : r);
+      showToast('차수가 수정됐어요 ✓');
+    } else { showToast('수정 실패 — 다시 시도해주세요'); }
+  } else {
+    const { data, error } = await db.from('rounds').insert([payload]).select();
+    if (!error && data) {
+      rounds.push(data[0]);
+      showToast('차수가 기록됐어요 ✓');
+    } else { showToast('저장 실패 — 다시 시도해주세요'); }
+  }
+  render();
+  setTimeout(() => {
+    const d = document.getElementById('detail-'+currentProductId), i = document.getElementById('icon-'+currentProductId);
+    if (d) { d.classList.add('open'); i.classList.add('open'); }
+  }, 10);
+  setLoading(false);
+}
+
+async function deleteRound(roundId, productId, e) {
+  e.stopPropagation();
+  if (!confirm('이 차수 기록을 삭제할까요?')) return;
+  setLoading(true);
+  const { error } = await db.from('rounds').delete().eq('id', roundId);
+  if (!error) {
+    rounds = rounds.filter(r => r.id !== roundId);
+    render();
+    showToast('차수가 삭제됐어요');
     setTimeout(() => {
-      const d = document.getElementById('detail-'+currentProductId), i = document.getElementById('icon-'+currentProductId);
+      const d = document.getElementById('detail-'+productId), i = document.getElementById('icon-'+productId);
       if (d) { d.classList.add('open'); i.classList.add('open'); }
     }, 10);
-  } else { showToast('저장 실패 — 다시 시도해주세요'); }
+  } else { showToast('삭제 실패'); }
   setLoading(false);
+}
+
+// ── 카테고리 관리 ──
+function openCategoryModal() {
+  renderCategoryManageList();
+  document.getElementById('new-category-name').value = '';
+  document.getElementById('category-modal').classList.add('open');
+}
+
+function renderCategoryManageList() {
+  const list = document.getElementById('category-list');
+  list.innerHTML = categories.length
+    ? categories.map(c => `<div class="manage-item"><span class="manage-item-name">${c.name}</span><button class="manage-item-delete" onclick="deleteCategory('${c.id}')">삭제</button></div>`).join('')
+    : '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">카테고리가 없어요</div>';
+}
+
+async function addCategory() {
+  const input = document.getElementById('new-category-name');
+  const name = input.value.trim();
+  if (!name) return;
+  const { data, error } = await db.from('categories').insert([{ name }]).select();
+  if (!error && data) {
+    categories.push(data[0]);
+    input.value = '';
+    renderCategoryManageList();
+    render();
+    showToast('카테고리 추가됐어요 ✓');
+  } else { showToast('추가 실패 — 이미 존재하거나 오류가 발생했어요'); }
+}
+
+async function deleteCategory(id) {
+  if (!confirm('카테고리를 삭제할까요?')) return;
+  const { error } = await db.from('categories').delete().eq('id', id);
+  if (!error) {
+    categories = categories.filter(c => c.id !== id);
+    renderCategoryManageList();
+    render();
+    showToast('카테고리 삭제됐어요');
+  } else { showToast('삭제 실패'); }
+}
+
+// ── 담당자 관리 ──
+function openManagerModal() {
+  renderManagerManageList();
+  document.getElementById('new-manager-name').value = '';
+  document.getElementById('manager-modal').classList.add('open');
+}
+
+function renderManagerManageList() {
+  const list = document.getElementById('manager-list');
+  list.innerHTML = managers.length
+    ? managers.map(m => `<div class="manage-item"><span class="manage-item-name">${m.name}</span><button class="manage-item-delete" onclick="deleteManager('${m.id}')">삭제</button></div>`).join('')
+    : '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">등록된 담당자가 없어요</div>';
+}
+
+async function addManager() {
+  const input = document.getElementById('new-manager-name');
+  const name = input.value.trim();
+  if (!name) return;
+  const { data, error } = await db.from('managers').insert([{ name }]).select();
+  if (!error && data) {
+    managers.push(data[0]);
+    input.value = '';
+    renderManagerManageList();
+    renderManagerSelect();
+    showToast('담당자 추가됐어요 ✓');
+  } else { showToast('추가 실패 — 이미 존재하거나 오류가 발생했어요'); }
+}
+
+async function deleteManager(id) {
+  if (!confirm('담당자를 삭제할까요?')) return;
+  const { error } = await db.from('managers').delete().eq('id', id);
+  if (!error) {
+    managers = managers.filter(m => m.id !== id);
+    renderManagerManageList();
+    renderManagerSelect();
+    showToast('담당자 삭제됐어요');
+  } else { showToast('삭제 실패'); }
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
