@@ -145,6 +145,21 @@ body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; backgrou
 .moodboard-add-label:hover { border-color: var(--sage); color: var(--sage); background: var(--sage-light); }
 .moodboard-add-label .plus { font-size: 20px; line-height: 1; font-weight: 300; }
 
+/* MOODBOARD LINKS */
+.mb-section-label { font-size: 10px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 7px; }
+.mb-img-label { font-size: 10px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.05em; margin: 10px 0 7px; }
+.mb-links { margin-bottom: 2px; }
+.mb-link-item { display: flex; align-items: center; gap: 7px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.mb-link-item:last-of-type { border-bottom: none; }
+.mb-link-anchor { font-size: 11px; color: var(--navy); text-decoration: none; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mb-link-anchor:hover { color: var(--sage); text-decoration: underline; }
+.mb-link-del { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 14px; padding: 0 2px; flex-shrink: 0; line-height: 1; }
+.mb-link-del:hover { color: #EF4444; }
+.mb-link-add-btn { font-size: 11px; color: var(--sage); background: none; border: 1px dashed var(--border); border-radius: 5px; padding: 4px 10px; cursor: pointer; font-family: inherit; margin-top: 7px; width: 100%; text-align: left; }
+.mb-link-add-btn:hover { border-color: var(--sage); background: var(--sage-light); }
+.mb-link-form { display: none; gap: 6px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+.mb-link-form.open { display: flex; }
+
 /* LIGHTBOX */
 .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 400; align-items: center; justify-content: center; }
 .lightbox.open { display: flex; }
@@ -349,7 +364,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_Kvt_V6me4pWxl6LvxM6ZmA_4Xd3coGj';
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let products = [], rounds = [], categories = [], managers = [], moodboards = [];
+let products = [], rounds = [], categories = [], managers = [], moodboards = [], moodboardLinks = [];
 let currentFilter = 'all', currentProductId = null;
 let productModalMode = 'add', currentEditProductId = null;
 let roundModalMode = 'add', currentEditRoundId = null;
@@ -377,14 +392,16 @@ async function load() {
     ]);
     products = pData || [];
     rounds = rData || [];
-    const [{ data: cData }, { data: mData }, { data: mbData }] = await Promise.all([
+    const [{ data: cData }, { data: mData }, { data: mbData }, { data: mlData }] = await Promise.all([
       db.from('categories').select('*').order('name'),
       db.from('managers').select('*').order('name'),
-      db.from('moodboards').select('*').order('created_at', { ascending: true })
+      db.from('moodboards').select('*').order('created_at', { ascending: true }),
+      db.from('moodboard_links').select('*').order('created_at', { ascending: true })
     ]);
     categories = cData || [];
     managers = mData || [];
     moodboards = mbData || [];
+    moodboardLinks = mlData || [];
   } catch(e) {
     showToast('데이터 로드 실패 — Supabase 연결을 확인해주세요');
   }
@@ -545,24 +562,55 @@ function renderProduct(p) {
 
   // 무드보드 섹션
   const productMoodboards = moodboards.filter(m => m.product_id === p.id);
+  const productLinks = moodboardLinks.filter(l => l.product_id === p.id);
   const mbOpen = openMoodboards.has(p.id);
+
   const thumbsHtml = productMoodboards.map((m, idx) =>
     `<div class="moodboard-thumb-wrap">
       <img class="moodboard-thumb" src="${m.image_url}" alt="무드보드" onclick="openLightbox('${p.id}',${idx})">
       <button class="moodboard-del-btn" onclick="deleteMoodboard('${m.id}','${p.id}',event)">✕</button>
     </div>`
   ).join('');
+
+  const linksHtml = productLinks.map(l => {
+    const display = l.label || (() => { try { return new URL(l.url).hostname; } catch(e) { return l.url; } })();
+    return `<div class="mb-link-item">
+      <span style="font-size:12px;flex-shrink:0">🔗</span>
+      <a class="mb-link-anchor" href="${l.url}" target="_blank" rel="noopener noreferrer" title="${l.url}">${display}</a>
+      <button class="mb-link-del" onclick="deleteMoodboardLink('${l.id}','${p.id}',event)" title="삭제">×</button>
+    </div>`;
+  }).join('');
+
+  const addLinkBtnHtml = productLinks.length < 3
+    ? `<button class="mb-link-add-btn" onclick="toggleLinkForm('${p.id}',event)">+ 링크 추가</button>` : '';
+
+  const linkFormHtml = `
+    <div id="link-form-${p.id}" class="mb-link-form">
+      <input id="link-url-${p.id}" class="form-input" placeholder="https://example.com" style="flex:1;min-width:150px;font-size:11px;padding:5px 8px">
+      <input id="link-label-${p.id}" class="form-input" placeholder="라벨 (선택)" style="width:110px;font-size:11px;padding:5px 8px">
+      <button onclick="saveMoodboardLink('${p.id}')" class="btn-add" style="padding:5px 12px;font-size:11px">추가</button>
+      <button onclick="toggleLinkForm('${p.id}',event)" class="btn-cancel" style="padding:5px 10px;font-size:11px">취소</button>
+    </div>`;
+
+  const totalCount = productMoodboards.length + productLinks.length;
   const moodboardHtml = `
     <div class="moodboard-section">
       <div class="moodboard-header" onclick="toggleMoodboard('${p.id}')">
         <div class="moodboard-title-row">
           <span style="font-size:13px">🎨</span>
           <span class="moodboard-label">디자인 무드보드</span>
-          ${productMoodboards.length ? `<span class="moodboard-count">${productMoodboards.length}장</span>` : ''}
+          ${totalCount > 0 ? `<span class="moodboard-count">${productLinks.length}개 링크 · ${productMoodboards.length}장</span>` : ''}
         </div>
         <span class="expand-icon${mbOpen?' open':''}" id="moodboard-icon-${p.id}">▼</span>
       </div>
       <div class="moodboard-gallery${mbOpen?' open':''}" id="moodboard-gallery-${p.id}">
+        <div class="mb-links">
+          <div class="mb-section-label">링크</div>
+          ${linksHtml}
+          ${addLinkBtnHtml}
+          ${linkFormHtml}
+        </div>
+        <div class="mb-img-label">이미지</div>
         <div class="moodboard-grid">
           ${thumbsHtml}
           <label class="moodboard-add-label" for="mb-file-${p.id}">
@@ -695,6 +743,7 @@ async function deleteProduct(id, e) {
   products = products.filter(x => x.id !== id);
   rounds = rounds.filter(x => x.product_id !== id);
   moodboards = moodboards.filter(x => x.product_id !== id);
+  moodboardLinks = moodboardLinks.filter(x => x.product_id !== id);
   openMoodboards.delete(id);
   render(); showToast('제품이 삭제됐어요');
   setLoading(false);
@@ -838,6 +887,55 @@ async function deleteRound(roundId, productId, e) {
     render();
     restoreOpenStates(productId);
     showToast('차수가 삭제됐어요');
+  } else { showToast('삭제 실패'); }
+  setLoading(false);
+}
+
+// ── 무드보드 링크 ──
+function toggleLinkForm(productId, e) {
+  if (e) e.stopPropagation();
+  const form = document.getElementById('link-form-'+productId);
+  if (!form) return;
+  const opening = !form.classList.contains('open');
+  form.classList.toggle('open', opening);
+  if (opening) {
+    const u = document.getElementById('link-url-'+productId);
+    const l = document.getElementById('link-label-'+productId);
+    if (u) { u.value = ''; u.focus(); }
+    if (l) l.value = '';
+  }
+}
+
+async function saveMoodboardLink(productId) {
+  const urlEl = document.getElementById('link-url-'+productId);
+  const labelEl = document.getElementById('link-label-'+productId);
+  let url = urlEl ? urlEl.value.trim() : '';
+  const label = labelEl ? labelEl.value.trim() : '';
+  if (!url) { if (urlEl) urlEl.focus(); return; }
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  setLoading(true);
+  const { data, error } = await db.from('moodboard_links').insert([{ product_id: productId, url, label: label || null }]).select();
+  if (!error && data) {
+    moodboardLinks.push(data[0]);
+    openMoodboards.add(productId);
+    render();
+    restoreOpenStates();
+    showToast('링크 추가됐어요 ✓');
+  } else { showToast('추가 실패 — SQL 실행 여부를 확인해주세요'); }
+  setLoading(false);
+}
+
+async function deleteMoodboardLink(linkId, productId, e) {
+  e.stopPropagation();
+  if (!confirm('링크를 삭제할까요?')) return;
+  setLoading(true);
+  const { error } = await db.from('moodboard_links').delete().eq('id', linkId);
+  if (!error) {
+    moodboardLinks = moodboardLinks.filter(l => l.id !== linkId);
+    openMoodboards.add(productId);
+    render();
+    restoreOpenStates();
+    showToast('링크가 삭제됐어요');
   } else { showToast('삭제 실패'); }
   setLoading(false);
 }
